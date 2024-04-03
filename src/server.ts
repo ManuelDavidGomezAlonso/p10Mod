@@ -6,26 +6,27 @@ const server = net.createServer((connection) => {
 
   console.log('A client has connected.');
   connection.on('data', (data)=>{
-  const fileName = data
+  const fileName = data.toString().trim();
+
   if (fs.existsSync(fileName)) {
     const cat = spawn('cat', [`${fileName}`]);
     const wc = spawn('wc',['-l']);
-    let stringcontent = '"data": "';
+    let lineCount = '';
+        wc.stdout.on('data', (data) => {
+      lineCount += data.toString();
+    });
 
-    wc.stdout.pipe(cat.stdin).on('data', (data) =>{
-      stringcontent += data;
+    cat.stdout.pipe(wc.stdin);
+  
+    wc.on('close', () => {
+      connection.write(JSON.stringify({'command': 'wc', 'file': fileName, 'data': lineCount.trim()}) + '\n'); 
+      connection.end();
     });
     
-    stringcontent = `${stringcontent}"`
-    console.log(stringcontent);
-    const json = `{"command": "wc", "file": "helloworld.txt", ${stringcontent}}`;
-    console.log(json);
-    connection.write(JSON.stringify(json)); 
     } else {
       connection.write(JSON.stringify(`{"error": "No existe el fichero"}`));
     }
   });
-
   connection.on('close', () => {
     console.log('A client has disconnected');
   });
