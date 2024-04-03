@@ -1,28 +1,30 @@
 import net from 'net';
 import {spawn} from 'child_process';
+import fs from 'fs';
 
 const server = net.createServer((connection) => {
 
   console.log('A client has connected.');
   connection.on('data', (data)=>{
   const fileName = data
-  const cat = spawn('cat', [`${fileName}`]);
-  const wc = spawn('wc',['-l']);
+  if (fs.existsSync(fileName)) {
+    const cat = spawn('cat', [`${fileName}`]);
+    const wc = spawn('wc',['-l']);
+    let stringcontent = '"data": "';
 
-  let stringcontent = '"data": "';
-
-  wc.stdout.pipe(cat.stdin).on('data', (data) =>{
-    stringcontent += data;
+    wc.stdout.pipe(cat.stdin).on('data', (data) =>{
+      stringcontent += data;
+    });
+    
+    stringcontent = `${stringcontent}"`
+    console.log(stringcontent);
+    const json = `{"command": "wc", "file": "helloworld.txt", ${stringcontent}}`;
+    console.log(json);
+    connection.write(JSON.stringify(json)); 
+    } else {
+      connection.write(JSON.stringify(`{"error": "No existe el fichero"}`));
+    }
   });
-
-  stringcontent = `${stringcontent}"`
-
-  console.log(stringcontent);
-
-  const json = `{"command": "wc", "file": "helloworld.txt", ${stringcontent}}`;
-  console.log(json);
-  connection.write(JSON.stringify(json));  
-});
 
   connection.on('close', () => {
     console.log('A client has disconnected');
